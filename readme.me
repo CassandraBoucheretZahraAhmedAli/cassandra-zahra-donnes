@@ -1,0 +1,66 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+
+os.makedirs('input', exist_ok=True)
+os.makedirs('images', exist_ok=True)
+os.makedirs('output', exist_ok=True)
+
+
+SIZE_CATEGORIES = {
+    "small": 0,        # Taille <= 1 000 lignes
+    "medium": 1000,    # Taille > 1 000 et <= 10 000 lignes
+    "large": 10000,    # Taille > 10 000 et <= 100 000 lignes
+    "huge": 100000     # Taille > 100 000 lignes
+}
+
+def categorize_file_size(file_path):
+    """
+    Catégorise un fichier CSV en fonction de son nombre de lignes.
+    """
+    num_lines = sum(1 for line in open(file_path)) - 1  # Compte les lignes, sans l'en-tête
+    if num_lines <= SIZE_CATEGORIES["medium"]:
+        return "small"
+    elif num_lines <= SIZE_CATEGORIES["large"]:
+        return "medium"
+    elif num_lines <= SIZE_CATEGORIES["huge"]:
+        return "large"
+    else:
+        return "huge"
+
+
+input_file = 'input/data.csv'
+size_category = categorize_file_size(input_file)
+print(f"Le fichier est catégorisé comme '{size_category}' en fonction de sa taille.")
+
+data = pd.read_csv(input_file)
+
+
+fecal_data = data[data['sample_type'] == 'fécal']
+for mouse_id in fecal_data['mouse_id'].unique():
+    mouse_data = fecal_data[fecal_data['mouse_id'] == mouse_id]
+    plt.plot(mouse_data['experimental_day'], mouse_data['counts_live_bacteria'], label=mouse_id)
+
+plt.title(f'Quantité de bactéries fécales par souris ({size_category})')
+plt.xlabel('Jour expérimental')
+plt.ylabel('Quantité de bactéries vivantes')
+plt.legend()
+plt.savefig(f'images/graphique_fecal_{size_category}.png')
+plt.close()
+
+
+caecal_data = data[data['sample_type'] == 'cécal']
+sns.violinplot(x='treatment', y='counts_live_bacteria', data=caecal_data)
+plt.title(f'Dispersion des bactéries (cécal) - {size_category}')
+plt.xlabel('Traitement')
+plt.ylabel('Quantité de bactéries vivantes')
+plt.savefig(f'images/graphique_caecal_violin_{size_category}.png')
+plt.close()
+
+
+fecal_data.to_csv(f'output/fecal_data_{size_category}.csv', index=False)
+caecal_data.to_csv(f'output/caecal_data_{size_category}.csv', index=False)
+
+print(f"Traitement terminé pour le fichier '{size_category}'. Vérifiez les dossiers output/ et images/")
